@@ -1,5 +1,11 @@
 import { generateUUID } from "../utils/uuid";
 
+export interface SessionContext {
+    sessionId: string;
+    userAgent: string;
+    pageUrl: string;
+}
+
 export class SessionManager {
     private static instance: SessionManager;
     private sessionId: string;
@@ -31,5 +37,22 @@ export class SessionManager {
 
     public setAppVersion(version: string): void {
         this.appVersion = version;
+    }
+
+    public getSessionContext(): SessionContext {
+        const userAgent =
+            typeof window !== "undefined"
+                ? window.navigator?.userAgent || "unknown"
+                : "unknown";
+        const pageUrl =
+            typeof window !== "undefined"
+                ? window.location?.href || "unknown"
+                : "unknown";
+
+        return {
+            sessionId: this.sessionId,
+            userAgent,
+            pageUrl,
+        };
     }
 }

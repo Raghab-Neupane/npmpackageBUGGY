@@ -1,13 +1,12 @@
 import { LogEvent } from "./models/LogEvent";
-import { SDKConfig, DEFAULT_CONFIG } from "./config/SDKConfig";
-import { SessionManager } from "./services/SessionManager";
-import { LocationService } from "./services/LocationService";
+import { SDKConfig, DEFAULT_CONFIG } from "./services/config";
+import { SessionManager } from "./services/session";
 import { Deduplicator } from "./processors/Deduplicator";
 import { RateLimiter } from "./processors/RateLimiter";
 import { Sanitizer } from "./processors/Sanitizer";
 import { QueueManager } from "./queue/QueueManager";
-import { BatchTransport } from "./transport/BatchTransport";
-import { ConsoleInterceptor } from "./interceptors/ConsoleInterceptor";
+import { BatchTransport } from "./services/transport";
+import { ConsoleInterceptor } from "./services/interceptor";
 import { generateUUID } from "./utils/uuid";
 
 let currentConfig: SDKConfig = { ...DEFAULT_CONFIG };
@@ -25,17 +24,6 @@ export async function init(options: Partial<SDKConfig> = {}): Promise<void> {
 
     const sessionManager = SessionManager.getInstance();
     sessionManager.setAppVersion(currentConfig.appVersion);
-
-    const locationService = LocationService.getInstance();
-    
-    isSDKProcessing = true;
-    try {
-        await locationService.initialize();
-    } catch {
-        // Safe fallback
-    } finally {
-        isSDKProcessing = false;
-    }
 
     deduplicator = new Deduplicator(currentConfig.dedupeWindowMs);
     rateLimiter = new RateLimiter(currentConfig.rateLimitMaxPerMinute);
@@ -81,31 +69,18 @@ export async function init(options: Partial<SDKConfig> = {}): Promise<void> {
             return;
         }
 
-        const loc = locationService.getLocationData();
-
-        const userAgent =
-            typeof window !== "undefined"
-                ? window.navigator?.userAgent || "unknown"
-                : "unknown";
-        const url =
-            typeof window !== "undefined"
-                ? window.location?.href || "unknown"
-                : "unknown";
+        const sessionContext = sessionManager.getSessionContext();
 
         const logEvent: LogEvent = {
             id: generateUUID(),
             level,
             message: cleanMessage,
             timestamp: new Date().toISOString(),
-            sessionId: sessionManager.getSessionId(),
-            ip: loc.ip,
-            country: loc.country,
-            city: loc.city,
-            region: loc.region,
+            sessionId: sessionContext.sessionId,
             sdkVersion: sessionManager.getSdkVersion(),
             appVersion: sessionManager.getAppVersion(),
-            userAgent,
-            url,
+            userAgent: sessionContext.userAgent,
+            url: sessionContext.pageUrl,
             stackTrace,
         };
 
@@ -135,12 +110,11 @@ export function close(): void {
 }
 
 export type { LogEvent } from "./models/LogEvent";
-export type { SDKConfig } from "./config/SDKConfig";
-export { SessionManager } from "./services/SessionManager";
-export { LocationService } from "./services/LocationService";
+export type { SDKConfig } from "./services/config";
+export { SessionManager, SessionContext } from "./services/session";
 export { Deduplicator } from "./processors/Deduplicator";
 export { RateLimiter } from "./processors/RateLimiter";
 export { Sanitizer } from "./processors/Sanitizer";
 export { QueueManager } from "./queue/QueueManager";
-export { BatchTransport } from "./transport/BatchTransport";
-export { ConsoleInterceptor } from "./interceptors/ConsoleInterceptor";
+export { BatchTransport } from "./services/transport";
+export { ConsoleInterceptor } from "./services/interceptor";
