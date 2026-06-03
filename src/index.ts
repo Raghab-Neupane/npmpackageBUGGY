@@ -90,8 +90,8 @@ export async function init(options: Partial<SDKConfig> = {}): Promise<void> {
     consoleInterceptor.install();
 }
 
-export function initLogger(endpoint: string): void {
-    init({ endpoint });
+export function initLogger(): void {
+    init({});
 }
 
 export async function flush(): Promise<void> {
