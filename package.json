@@ -1,0 +1,30 @@
+{
+  "name": "npmpackagebuggy",
+  "version": "1.0.0",
+  "description": "Logging SDK",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch"
+  },
+  "keywords": [
+    "logging",
+    "sdk",
+    "monitoring"
+  ],
+  "author": "Raghab",
+  "license": "MIT",
+  "dependencies": {
+    "uuid": "^14.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.1",
+    "tsup": "^8.5.1",
+    "typescript": "^6.0.3"
+  }
+}
