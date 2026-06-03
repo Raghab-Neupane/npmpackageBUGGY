@@ -14,7 +14,6 @@ export function initLogger(endpoint: string) {
             level: "log",
             message: args.map(String).join(" "),
             timestamp: new Date().toISOString(),
-            ip,
         };
 
         sendLog(endpoint, payload);
