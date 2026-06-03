@@ -13,7 +13,7 @@ export interface SDKConfig {
 }
 
 export const DEFAULT_CONFIG: SDKConfig = {
-    endpoint: "http://172.16.30.114:8000",
+    endpoint: "http://localhost:8000",
     appVersion: "1.0.0",
     dedupeWindowMs: 2000,
     maxMessageLength: 1000,
