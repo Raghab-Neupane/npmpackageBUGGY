@@ -16,6 +16,6 @@ export function initLogger(endpoint: string) {
             timestamp: new Date().toISOString(),
         };
 
-        sendLog(endpoint, payload);
+        sendLog(payload);
     };
 }
