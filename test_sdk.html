@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>SDK Test Page</title>
+  <script type="importmap">
+    {
+      "imports": {
+        "get-browser-fingerprint": "./node_modules/get-browser-fingerprint/src/index.js",
+        "location": "./node_modules/location/location.js"
+      }
+    }
+  </script>
+</head>
+<body>
+  <h1>Testing Geolocation Logging SDK</h1>
+  <div id="status">Initializing...</div>
+  <div id="details"></div>
+  <script type="module">
+    import { init } from './dist/index.mjs';
+    import { SessionManager } from './dist/index.mjs';
+    
+    async function run() {
+      const statusDiv = document.getElementById('status');
+      const detailsDiv = document.getElementById('details');
+      
+      try {
+        statusDiv.innerText = "Initializing SDK...";
+        await init({ 
+          endpoint: 'http://localhost:8000',
+          deviceIdCacheDurationMs: 2000,
+          flushIntervalMs: 500
+        });
+        statusDiv.innerText = "SDK Initialized!";
+
+        const sessionManager = SessionManager.getInstance();
+        const context = sessionManager.getSessionContext();
+        detailsDiv.innerHTML = `
+          <p><strong>Device ID:</strong> ${context.deviceId}</p>
+          <p><strong>Session ID:</strong> ${context.sessionId}</p>
+          <p><strong>IP:</strong> ${context.ip}</p>
+          <p><strong>Country:</strong> ${context.country}</p>
+          <p><strong>City:</strong> ${context.city}</p>
+          <p><strong>Region:</strong> ${context.region}</p>
+          <p><strong>Latitude:</strong> ${context.latitude}</p>
+          <p><strong>Longitude:</strong> ${context.longitude}</p>
+        `;
+        
+        console.log("Logged location from page body!");
+      } catch (err) {
+        statusDiv.innerText = "Error: " + err.message;
+        detailsDiv.innerText = err.stack;
+      }
+    }
+    run();
+  </script>
+</body>
+</html>
