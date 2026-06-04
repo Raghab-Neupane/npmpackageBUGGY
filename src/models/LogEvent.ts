@@ -5,12 +5,14 @@ export interface LogEvent {
     message: string;
     timestamp: string; // ISO string
     sessionId: string;
-    ip?: string;
-    country?: string;
-    city?: string;
-    region?: string;
-    latitude?: number;
-    longitude?: number;
+    location?: {
+        ip?: string;
+        country?: string;
+        city?: string;
+        region?: string;
+        latitude?: number;
+        longitude?: number;
+    };
     sdkVersion: string;
     appVersion: string;
     userAgent: string;

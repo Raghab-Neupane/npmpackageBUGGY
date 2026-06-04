@@ -24,7 +24,7 @@ export async function init(options: Partial<SDKConfig> = {}): Promise<void> {
 
     const sessionManager = SessionManager.getInstance();
     sessionManager.setAppVersion(currentConfig.appVersion);
-    await sessionManager.initialize(currentConfig.deviceIdCacheDurationMs);
+    await sessionManager.initialize(currentConfig.endpoint, currentConfig.deviceIdCacheDurationMs);
 
     deduplicator = new Deduplicator(currentConfig.dedupeWindowMs);
     rateLimiter = new RateLimiter(currentConfig.rateLimitMaxPerMinute);
@@ -84,6 +84,7 @@ export async function init(options: Partial<SDKConfig> = {}): Promise<void> {
             userAgent: sessionContext.userAgent,
             url: sessionContext.pageUrl,
             stackTrace,
+            location: sessionContext.location,
         };
 
         queueManager.push(logEvent);

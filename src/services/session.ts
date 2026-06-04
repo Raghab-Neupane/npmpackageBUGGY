@@ -1,11 +1,23 @@
 import { generateUUID } from "../utils/uuid";
 import getBrowserFingerprint from "get-browser-fingerprint";
+// @ts-ignore
+import locationMock from "location";
+
+export interface LocationDetails {
+    ip?: string;
+    country?: string;
+    city?: string;
+    region?: string;
+    latitude?: number;
+    longitude?: number;
+}
 
 export interface SessionContext {
     sessionId: string;
     userAgent: string;
     pageUrl: string;
     deviceId: string;
+    location?: LocationDetails;
 }
 
 export class SessionManager {
@@ -14,6 +26,7 @@ export class SessionManager {
     private deviceId: string = "";
     private sdkVersion: string = "1.0.0";
     private appVersion: string = "1.0.0";
+    private location?: LocationDetails;
 
     private constructor() {
         this.sessionId = generateUUID();
@@ -26,8 +39,28 @@ export class SessionManager {
         return SessionManager.instance;
     }
 
-    public async initialize(cacheDurationMs: number): Promise<void> {
+    public async initialize(endpoint: string, cacheDurationMs: number): Promise<void> {
         this.deviceId = await this.getOrGenerateDeviceId(cacheDurationMs);
+        await this.fetchLocationDetails(endpoint);
+    }
+
+    private async fetchLocationDetails(endpoint: string): Promise<void> {
+        try {
+            const response = await fetch(`${endpoint}/location`);
+            if (response.ok) {
+                const data = await response.json();
+                this.location = {
+                    ip: data.ip,
+                    country: data.country,
+                    city: data.city,
+                    region: data.region,
+                    latitude: data.latitude,
+                    longitude: data.longitude,
+                };
+            }
+        } catch (e) {
+            // ignore
+        }
     }
 
     public getSessionId(): string {
@@ -55,16 +88,24 @@ export class SessionManager {
             typeof window !== "undefined"
                 ? window.navigator?.userAgent || "unknown"
                 : "unknown";
-        const pageUrl =
-            typeof window !== "undefined"
-                ? window.location?.href || "unknown"
-                : "unknown";
+
+        let pageUrl = "unknown";
+        if (typeof window !== "undefined" && window.location) {
+            pageUrl = window.location.href || "unknown";
+        } else {
+            try {
+                pageUrl = (locationMock as any)?.href || "unknown";
+            } catch (e) {
+                // ignore
+            }
+        }
 
         return {
             sessionId: this.sessionId,
             userAgent,
             pageUrl,
             deviceId: this.deviceId,
+            location: this.location,
         };
     }
 
