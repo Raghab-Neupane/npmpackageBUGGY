@@ -91,17 +91,6 @@ export async function init(options: Partial<SDKConfig> = {}): Promise<void> {
 
         queueManager.push(logEvent);
 
-        const dashboardUrl = `http://localhost:5175/device/${sessionManager.getDeviceId()}`;
-
-        console.log(`
-Your website is:-
-
-Client Devices:-
-${sessionManager.getDeviceId()}
-
-Dashboard Link:-
-${dashboardUrl}
-`);
     });
 
 
@@ -126,6 +115,18 @@ export function close(): void {
     if (queueManager) {
         queueManager.destroy();
     }
+}
+
+export function clientdetails(deviceId: string) {
+    console.log(`
+Your website is:-
+
+Client Devices:-
+${deviceId}
+
+Dashboard Link:-
+http://localhost:5175/device/${deviceId}
+`);
 }
 
 
