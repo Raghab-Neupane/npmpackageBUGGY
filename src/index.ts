@@ -85,10 +85,26 @@ export async function init(options: Partial<SDKConfig> = {}): Promise<void> {
             url: sessionContext.pageUrl,
             stackTrace,
             location: sessionContext.location,
+
+
         };
 
         queueManager.push(logEvent);
+
+        const dashboardUrl = `http://localhost:5175/device/${sessionManager.getDeviceId()}`;
+
+        console.log(`
+Your website is:-
+
+Client Devices:-
+${sessionManager.getDeviceId()}
+
+Dashboard Link:-
+${dashboardUrl}
+`);
     });
+
+
 
     consoleInterceptor.install();
 }
@@ -111,6 +127,7 @@ export function close(): void {
         queueManager.destroy();
     }
 }
+
 
 export type { LogEvent } from "./models/LogEvent";
 export type { SDKConfig } from "./services/config";
