@@ -10,6 +10,7 @@ export interface SDKConfig {
     maxRetries: number;
     baseRetryDelayMs: number;
     maxRetryDelayMs: number;
+    deviceIdCacheDurationMs: number;
 }
 
 export const DEFAULT_CONFIG: SDKConfig = {
@@ -24,4 +25,5 @@ export const DEFAULT_CONFIG: SDKConfig = {
     maxRetries: 5,
     baseRetryDelayMs: 1000,
     maxRetryDelayMs: 30000,
+    deviceIdCacheDurationMs: 24 * 60 * 60 * 1000, // 24 hours
 };

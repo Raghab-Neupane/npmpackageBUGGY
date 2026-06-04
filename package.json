@@ -21,6 +21,7 @@
   "author": "Raghab",
   "license": "MIT",
   "dependencies": {
+    "get-browser-fingerprint": "^4.1.1",
     "uuid": "^14.0.0"
   },
   "devDependencies": {

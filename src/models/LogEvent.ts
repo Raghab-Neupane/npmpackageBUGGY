@@ -1,5 +1,6 @@
 export interface LogEvent {
     id: string;
+    deviceId?: string;
     level: "debug" | "info" | "warn" | "error";
     message: string;
     timestamp: string; // ISO string
