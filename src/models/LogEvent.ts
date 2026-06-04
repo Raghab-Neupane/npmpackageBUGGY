@@ -6,12 +6,15 @@ export interface LogEvent {
     timestamp: string; // ISO string
     sessionId: string;
     location?: {
-        ip?: string;
-        country?: string;
-        city?: string;
-        region?: string;
-        latitude?: number;
-        longitude?: number;
+        href?: string;
+        origin?: string;
+        protocol?: string;
+        host?: string;
+        hostname?: string;
+        port?: string;
+        pathname?: string;
+        search?: string;
+        hash?: string;
     };
     sdkVersion: string;
     appVersion: string;

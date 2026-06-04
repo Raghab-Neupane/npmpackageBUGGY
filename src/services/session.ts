@@ -4,12 +4,15 @@ import getBrowserFingerprint from "get-browser-fingerprint";
 import locationMock from "location";
 
 export interface LocationDetails {
-    ip?: string;
-    country?: string;
-    city?: string;
-    region?: string;
-    latitude?: number;
-    longitude?: number;
+    href?: string;
+    origin?: string;
+    protocol?: string;
+    host?: string;
+    hostname?: string;
+    port?: string;
+    pathname?: string;
+    search?: string;
+    hash?: string;
 }
 
 export interface SessionContext {
@@ -26,7 +29,6 @@ export class SessionManager {
     private deviceId: string = "";
     private sdkVersion: string = "1.0.0";
     private appVersion: string = "1.0.0";
-    private location?: LocationDetails;
 
     private constructor() {
         this.sessionId = generateUUID();
@@ -39,28 +41,8 @@ export class SessionManager {
         return SessionManager.instance;
     }
 
-    public async initialize(endpoint: string, cacheDurationMs: number): Promise<void> {
+    public async initialize(_endpoint: string, cacheDurationMs: number): Promise<void> {
         this.deviceId = await this.getOrGenerateDeviceId(cacheDurationMs);
-        await this.fetchLocationDetails(endpoint);
-    }
-
-    private async fetchLocationDetails(endpoint: string): Promise<void> {
-        try {
-            const response = await fetch(`${endpoint}/location`);
-            if (response.ok) {
-                const data = await response.json();
-                this.location = {
-                    ip: data.ip,
-                    country: data.country,
-                    city: data.city,
-                    region: data.region,
-                    latitude: data.latitude,
-                    longitude: data.longitude,
-                };
-            }
-        } catch (e) {
-            // ignore
-        }
     }
 
     public getSessionId(): string {
@@ -89,23 +71,34 @@ export class SessionManager {
                 ? window.navigator?.userAgent || "unknown"
                 : "unknown";
 
-        let pageUrl = "unknown";
-        if (typeof window !== "undefined" && window.location) {
-            pageUrl = window.location.href || "unknown";
-        } else {
-            try {
-                pageUrl = (locationMock as any)?.href || "unknown";
-            } catch (e) {
-                // ignore
-            }
-        }
+        const location = this.getLocationDetails();
+        const pageUrl = location.href || "unknown";
 
         return {
             sessionId: this.sessionId,
             userAgent,
             pageUrl,
             deviceId: this.deviceId,
-            location: this.location,
+            location,
+        };
+    }
+
+    private getLocationDetails(): LocationDetails {
+        const source =
+            typeof window !== "undefined" && window.location
+                ? window.location
+                : (locationMock as LocationDetails);
+
+        return {
+            href: source.href,
+            origin: source.origin,
+            protocol: source.protocol,
+            host: source.host,
+            hostname: source.hostname,
+            port: source.port,
+            pathname: source.pathname,
+            search: source.search,
+            hash: source.hash,
         };
     }
 
