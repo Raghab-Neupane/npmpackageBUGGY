@@ -20,6 +20,8 @@
 
 export interface LogEvent {
     deviceId: string;
+    sessionId: string;
+    sessionStartedAt?: string;
     level: "debug" | "info" | "warn" | "error";
     message: string;
 

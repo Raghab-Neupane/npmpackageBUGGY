@@ -8,6 +8,7 @@ export class ConsoleInterceptor {
     private originalError: typeof console.error;
     private originalWarn: typeof console.warn;
     private originalDebug: typeof console.debug;
+    private deviceId: string;
 
     constructor(
         private browserInfo: BrowserInfo,
@@ -18,27 +19,36 @@ export class ConsoleInterceptor {
         this.originalError = console.error;
         this.originalWarn = console.warn;
         this.originalDebug = console.debug;
+        this.deviceId = this.getOrCreateDeviceId();
     }
 
     start(): void {
         console.log = (...args: unknown[]) => {
             this.originalLog.apply(console, args);
-            this.capture("info", args);
+            this.capture("info", args).catch((err) => {
+                this.originalError("[ConsoleInterceptor] capture failed:", err);
+            });
         };
 
         console.error = (...args: unknown[]) => {
             this.originalError.apply(console, args);
-            this.capture("error", args);
+            this.capture("error", args).catch((err) => {
+                this.originalError("[ConsoleInterceptor] capture failed:", err);
+            });
         };
 
         console.warn = (...args: unknown[]) => {
             this.originalWarn.apply(console, args);
-            this.capture("warn", args);
+            this.capture("warn", args).catch((err) => {
+                this.originalError("[ConsoleInterceptor] capture failed:", err);
+            });
         };
 
         console.debug = (...args: unknown[]) => {
             this.originalDebug.apply(console, args);
-            this.capture("debug", args);
+            this.capture("debug", args).catch((err) => {
+                this.originalError("[ConsoleInterceptor] capture failed:", err);
+            });
         };
     }
 
@@ -49,14 +59,48 @@ export class ConsoleInterceptor {
         console.debug = this.originalDebug;
     }
 
+    private getOrCreateDeviceId(): string {
+        if (typeof window === "undefined") {
+            return "server-side";
+        }
+        const storageKey = "buggy_device_id";
+        try {
+            let deviceId = localStorage.getItem(storageKey);
+            if (!deviceId) {
+                deviceId = crypto.randomUUID();
+                localStorage.setItem(storageKey, deviceId);
+            }
+            return deviceId;
+        } catch (e) {
+            return "anonymous-device";
+        }
+    }
+
+    private safeJSONStringify(obj: unknown): string {
+        const visited = new WeakSet();
+        try {
+            return JSON.stringify(obj, (key, value) => {
+                if (typeof value === "object" && value !== null) {
+                    if (visited.has(value)) {
+                        return "[Circular]";
+                    }
+                    visited.add(value);
+                }
+                return value;
+            });
+        } catch (error) {
+            return `[Serialization Failed: ${error instanceof Error ? error.message : String(error)}]`;
+        }
+    }
+
     private async capture(
         level: "debug" | "info" | "warn" | "error",
         args: unknown[]
     ): Promise<void> {
         const message = args
             .map((arg) => {
-                if (typeof arg === "object") {
-                    return JSON.stringify(arg);
+                if (typeof arg === "object" && arg !== null) {
+                    return this.safeJSONStringify(arg);
                 }
                 return String(arg);
             })
@@ -74,7 +118,9 @@ export class ConsoleInterceptor {
         }
 
         const logEvent: LogEvent = {
-            deviceId: this.sessionService.SessionId,
+            deviceId: this.deviceId,
+            sessionId: this.sessionService.SessionId,
+            sessionStartedAt: this.sessionService.SessionStartedAt,
             level,
             message,
             timestamp: new Date().toISOString(),
