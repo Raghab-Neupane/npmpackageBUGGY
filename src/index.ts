@@ -1,141 +1,47 @@
-import { LogEvent } from "./models/LogEvent";
-import { SDKConfig, DEFAULT_CONFIG } from "./services/config";
-import { SessionManager } from "./services/session";
-import { Deduplicator } from "./processors/Deduplicator";
-import { RateLimiter } from "./processors/RateLimiter";
-import { Sanitizer } from "./processors/Sanitizer";
-import { QueueManager } from "./queue/QueueManager";
-import { BatchTransport } from "./services/transport";
-import { ConsoleInterceptor } from "./services/interceptor";
-import { generateUUID } from "./utils/uuid";
+import { SDKConfig } from "./models/SDKConfig";
+import { ApiClient } from "./services/ApiClient";
+import { BrowserInfo } from "./services/Browser_info";
+import { GetUserLocation } from "./services/GetUserLocation";
+import { SessionService } from "./services/Sessionservice";
+import { ConsoleInterceptor } from "./services/ConsoleInterceptor";
 
-let currentConfig: SDKConfig = { ...DEFAULT_CONFIG };
-let deduplicator: Deduplicator;
-let rateLimiter: RateLimiter;
-let sanitizer: Sanitizer;
-let transport: BatchTransport;
-let queueManager: QueueManager;
-let consoleInterceptor: ConsoleInterceptor;
-
-export let isSDKProcessing = false;
-
-export async function init(options: Partial<SDKConfig> = {}): Promise<void> {
-    currentConfig = { ...DEFAULT_CONFIG, ...options };
-
-    const sessionManager = SessionManager.getInstance();
-    sessionManager.setAppVersion(currentConfig.appVersion);
-    await sessionManager.initialize(currentConfig.endpoint, currentConfig.deviceIdCacheDurationMs);
-
-    deduplicator = new Deduplicator(currentConfig.dedupeWindowMs);
-    rateLimiter = new RateLimiter(currentConfig.rateLimitMaxPerMinute);
-    sanitizer = new Sanitizer(currentConfig.maxMessageLength);
-
-    transport = new BatchTransport(
-        currentConfig.endpoint,
-        currentConfig.maxRetries,
-        currentConfig.baseRetryDelayMs,
-        currentConfig.maxRetryDelayMs
-    );
-
-    queueManager = new QueueManager(
-        currentConfig.maxQueueSize,
-        currentConfig.flushIntervalMs,
-        async (batch) => {
-            isSDKProcessing = true;
-            try {
-                await transport.send(batch);
-            } finally {
-                isSDKProcessing = false;
-            }
-        }
-    );
-
-    consoleInterceptor = new ConsoleInterceptor((level, message, stackTrace) => {
-        if (isSDKProcessing) return;
-
-        if (Math.random() > currentConfig.samplingRate) {
-            return;
-        }
-
-        if (!sanitizer.isValid(message)) {
-            return;
-        }
-        const cleanMessage = sanitizer.sanitize(message);
-
-        if (!deduplicator.shouldProcess(cleanMessage)) {
-            return;
-        }
-
-        if (!rateLimiter.shouldProcess()) {
-            return;
-        }
-
-        const sessionContext = sessionManager.getSessionContext();
-
-        const logEvent: LogEvent = {
-            id: generateUUID(),
-            deviceId: sessionContext.deviceId,
-            level,
-            message: cleanMessage,
-            timestamp: new Date().toISOString(),
-            sessionId: sessionContext.sessionId,
-            sdkVersion: sessionManager.getSdkVersion(),
-            appVersion: sessionManager.getAppVersion(),
-            userAgent: sessionContext.userAgent,
-            url: sessionContext.pageUrl,
-            stackTrace,
-            location: sessionContext.location,
-
-
-        };
-
-        queueManager.push(logEvent);
-
-    });
-
-
-
-    consoleInterceptor.install();
-}
-
-export function initLogger(): void {
-    init({});
-}
-
-export async function flush(): Promise<void> {
-    if (queueManager) {
-        await queueManager.flush();
-    }
-}
-
-export function close(): void {
-    if (consoleInterceptor) {
-        consoleInterceptor.uninstall();
-    }
-    if (queueManager) {
-        queueManager.destroy();
-    }
-}
-
-export function clientdetails(deviceId: string) {
-    console.log(`
-Your website is:-
-
-Client Devices:-
-${deviceId}
-
-Dashboard Link:-
-http://localhost:5175/device/${deviceId}
-`);
-}
-
-
+export { ConsoleInterceptor } from "./services/ConsoleInterceptor";
+export { BrowserInfo } from "./services/Browser_info";
+export { GetUserLocation } from "./services/GetUserLocation";
+export { SessionService } from "./services/Sessionservice";
+export { ApiClient } from "./services/ApiClient";
 export type { LogEvent } from "./models/LogEvent";
-export type { SDKConfig } from "./services/config";
-export { SessionManager, SessionContext } from "./services/session";
-export { Deduplicator } from "./processors/Deduplicator";
-export { RateLimiter } from "./processors/RateLimiter";
-export { Sanitizer } from "./processors/Sanitizer";
-export { QueueManager } from "./queue/QueueManager";
-export { BatchTransport } from "./services/transport";
-export { ConsoleInterceptor } from "./services/interceptor";
+export type { SDKConfig } from "./models/SDKConfig";
+
+/**
+ * Initializes the Buggy Logging SDK with the provided configuration.
+ * Instantiates ApiClient, BrowserInfo, GetUserLocation, and SessionService,
+ * and starts the ConsoleInterceptor.
+ * 
+ * @param config SDKConfig object containing the target backend endpoint
+ * @returns The active ConsoleInterceptor instance
+ */
+export function init(config: SDKConfig): ConsoleInterceptor {
+    const userAgent = typeof navigator !== "undefined" ? navigator.userAgent : "Node.js Environment";
+
+    // Instantiate ApiClient with user-provided endpoint
+    const apiClient = new ApiClient(config.endpoint);
+
+    // Instantiate services
+    const browserInfo = new BrowserInfo(userAgent);
+    const locationService = new GetUserLocation();
+    const sessionService = new SessionService();
+
+    // Instantiate ConsoleInterceptor with injected dependencies
+    const interceptor = new ConsoleInterceptor(
+        apiClient,
+        browserInfo,
+        locationService,
+        sessionService
+    );
+
+    // Start intercepting console calls
+    interceptor.start();
+
+    return interceptor;
+}
