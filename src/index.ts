@@ -23,15 +23,15 @@ export type { SDKConfig } from "./models/SDKConfig";
  */
 export function init(config: SDKConfig): ConsoleInterceptor {
     const userAgent = typeof navigator !== "undefined" ? navigator.userAgent : "Node.js Environment";
-    
+
     // Instantiate ApiClient with user-provided endpoint
     const apiClient = new ApiClient(config.endpoint);
-    
+
     // Instantiate services
     const browserInfo = new BrowserInfo(userAgent);
     const locationService = new GetUserLocation();
     const sessionService = new SessionService();
-    
+
     // Instantiate ConsoleInterceptor with injected dependencies
     const interceptor = new ConsoleInterceptor(
         apiClient,
@@ -39,9 +39,9 @@ export function init(config: SDKConfig): ConsoleInterceptor {
         locationService,
         sessionService
     );
-    
+
     // Start intercepting console calls
     interceptor.start();
-    
+
     return interceptor;
 }
