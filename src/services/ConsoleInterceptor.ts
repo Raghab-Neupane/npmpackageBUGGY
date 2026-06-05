@@ -2,6 +2,7 @@ import { LogEvent } from "../models/LogEvent";
 import { BrowserInfo } from "./Browser_info";
 import { GetUserLocation } from "./GetUserLocation";
 import { SessionService } from "./Sessionservice";
+import { ApiClient } from "./ApiClient";
 
 export class ConsoleInterceptor {
     private originalLog: typeof console.log;
@@ -11,9 +12,10 @@ export class ConsoleInterceptor {
     private deviceId: string;
 
     constructor(
+        private apiClient: ApiClient,
         private browserInfo: BrowserInfo,
         private locationService: GetUserLocation,
-        private sessionService: SessionService
+        private sessionService: SessionService,
     ) {
         this.originalLog = console.log;
         this.originalError = console.error;
@@ -134,6 +136,6 @@ export class ConsoleInterceptor {
         };
 
         // Use originalLog to output the structured logEvent and avoid infinite recursion
-        this.originalLog("[CAPTURED LOG EVENT]:", logEvent);
+        this.apiClient.send(logEvent);
     }
 }
