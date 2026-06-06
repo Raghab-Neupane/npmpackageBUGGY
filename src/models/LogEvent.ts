@@ -37,4 +37,6 @@ export interface LogEvent {
     longitude?: number;
 
     url: string;
+    isOnline: boolean;
 }
+
