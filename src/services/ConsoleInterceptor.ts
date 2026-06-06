@@ -133,6 +133,7 @@ export class ConsoleInterceptor {
             latitude,
             longitude,
             url: typeof window !== "undefined" ? window.location?.href || "unknown" : "unknown",
+            isOnline: this.sessionService.IsOnline,
         };
 
         // Use originalLog to output the structured logEvent and avoid infinite recursion
