@@ -10,6 +10,8 @@ export class ConsoleInterceptor {
     private originalWarn: typeof console.warn;
     private originalDebug: typeof console.debug;
     private deviceId: string;
+    private ws: WebSocket | null = null;
+    private reconnectTimeout: any = null;
 
     constructor(
         private apiClient: ApiClient,
@@ -52,6 +54,8 @@ export class ConsoleInterceptor {
                 this.originalError("[ConsoleInterceptor] capture failed:", err);
             });
         };
+
+        this.connectWebSocket();
     }
 
     stop(): void {
@@ -59,6 +63,52 @@ export class ConsoleInterceptor {
         console.error = this.originalError;
         console.warn = this.originalWarn;
         console.debug = this.originalDebug;
+
+        if (this.reconnectTimeout) {
+            clearTimeout(this.reconnectTimeout);
+            this.reconnectTimeout = null;
+        }
+        if (this.ws) {
+            this.ws.close();
+            this.ws = null;
+        }
+    }
+
+    private connectWebSocket(): void {
+        if (typeof window === "undefined" || typeof WebSocket === "undefined") return;
+
+        try {
+            const endpoint = this.apiClient.getEndpoint();
+            const urlObj = new URL(endpoint);
+            const wsProto = urlObj.protocol === "https:" ? "wss:" : "ws:";
+            const wsUrl = `${wsProto}//${urlObj.host}/sdk/devices/${this.deviceId}/stream`;
+
+            if (this.ws) {
+                this.ws.close();
+            }
+
+            this.ws = new WebSocket(wsUrl);
+
+            this.ws.onopen = () => {
+                this.originalLog("[Buggy SDK] Connected to status websocket stream");
+            };
+
+            this.ws.onclose = () => {
+                this.ws = null;
+                if (!this.reconnectTimeout) {
+                    this.reconnectTimeout = setTimeout(() => {
+                        this.reconnectTimeout = null;
+                        this.connectWebSocket();
+                    }, 5000);
+                }
+            };
+
+            this.ws.onerror = (err) => {
+                this.originalError("[Buggy SDK] Status WebSocket error:", err);
+            };
+        } catch (e) {
+            this.originalError("[Buggy SDK] Failed to connect Status WebSocket:", e);
+        }
     }
 
     private getOrCreateDeviceId(): string {

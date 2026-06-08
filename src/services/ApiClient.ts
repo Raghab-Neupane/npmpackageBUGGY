@@ -10,6 +10,10 @@ export class ApiClient {
         this.endpoint = endpoint;
     }
 
+    public getEndpoint(): string {
+        return this.endpoint;
+    }
+
     async send(logEvent: LogEvent): Promise<void> {
         try {
             const response = await fetch(this.endpoint, {
