@@ -12,6 +12,7 @@ export class ConsoleInterceptor {
     private deviceId: string;
     private ws: WebSocket | null = null;
     private reconnectTimeout: any = null;
+    private heartbeatInterval: any = null;
 
     constructor(
         private apiClient: ApiClient,
@@ -68,9 +69,41 @@ export class ConsoleInterceptor {
             clearTimeout(this.reconnectTimeout);
             this.reconnectTimeout = null;
         }
+        this.stopHeartbeat();
         if (this.ws) {
             this.ws.close();
             this.ws = null;
+        }
+    }
+
+    private startHeartbeat(): void {
+        this.stopHeartbeat();
+        this.heartbeatInterval = setInterval(() => {
+            this.sendHeartbeat();
+        }, 30000);
+    }
+
+    private stopHeartbeat(): void {
+        if (this.heartbeatInterval) {
+            clearInterval(this.heartbeatInterval);
+            this.heartbeatInterval = null;
+        }
+    }
+
+    private sendHeartbeat(): void {
+        try {
+            if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+                const payload = {
+                    type: "heartbeat",
+                    deviceId: this.deviceId,
+                    sessionId: this.sessionService.SessionId,
+                    timestamp: new Date().toISOString()
+                };
+                this.ws.send(JSON.stringify(payload));
+                this.originalLog("[Buggy SDK] Heartbeat Sent");
+            }
+        } catch (e) {
+            this.originalError("[Buggy SDK] Failed to send heartbeat:", e);
         }
     }
 
@@ -90,12 +123,20 @@ export class ConsoleInterceptor {
             this.ws = new WebSocket(wsUrl);
 
             this.ws.onopen = () => {
-                this.originalLog("[Buggy SDK] Connected to status websocket stream");
+                this.originalLog("[Buggy SDK] WebSocket Connected");
+                if (this.reconnectTimeout) {
+                    clearTimeout(this.reconnectTimeout);
+                    this.reconnectTimeout = null;
+                }
+                this.startHeartbeat();
             };
 
             this.ws.onclose = () => {
                 this.ws = null;
+                this.stopHeartbeat();
+                this.originalLog("[Buggy SDK] WebSocket Disconnected");
                 if (!this.reconnectTimeout) {
+                    this.originalLog("[Buggy SDK] Reconnecting WebSocket");
                     this.reconnectTimeout = setTimeout(() => {
                         this.reconnectTimeout = null;
                         this.connectWebSocket();
@@ -183,7 +224,7 @@ export class ConsoleInterceptor {
             latitude,
             longitude,
             url: typeof window !== "undefined" ? window.location?.href || "unknown" : "unknown",
-            isOnline: this.sessionService.IsOnline,
+
         };
 
         // Use originalLog to output the structured logEvent and avoid infinite recursion
