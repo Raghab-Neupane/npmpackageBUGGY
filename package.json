@@ -1,6 +1,6 @@
 {
-  "name": "npmpackagebuggy",
-  "version": "1.0.0",
+  "name": "@raghabneupane/buggy",
+  "version": "1.0.1",
   "description": "Logging SDK",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",

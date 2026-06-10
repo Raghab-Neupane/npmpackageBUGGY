@@ -10,6 +10,9 @@ export class ConsoleInterceptor {
     private originalWarn: typeof console.warn;
     private originalDebug: typeof console.debug;
     private deviceId: string;
+    private ws: WebSocket | null = null;
+    private reconnectTimeout: any = null;
+    private heartbeatInterval: any = null;
 
     constructor(
         private apiClient: ApiClient,
@@ -52,6 +55,8 @@ export class ConsoleInterceptor {
                 this.originalError("[ConsoleInterceptor] capture failed:", err);
             });
         };
+
+        this.connectWebSocket();
     }
 
     stop(): void {
@@ -59,6 +64,92 @@ export class ConsoleInterceptor {
         console.error = this.originalError;
         console.warn = this.originalWarn;
         console.debug = this.originalDebug;
+
+        if (this.reconnectTimeout) {
+            clearTimeout(this.reconnectTimeout);
+            this.reconnectTimeout = null;
+        }
+        this.stopHeartbeat();
+        if (this.ws) {
+            this.ws.close();
+            this.ws = null;
+        }
+    }
+
+    private startHeartbeat(): void {
+        this.stopHeartbeat();
+        this.heartbeatInterval = setInterval(() => {
+            this.sendHeartbeat();
+        }, 30000);
+    }
+
+    private stopHeartbeat(): void {
+        if (this.heartbeatInterval) {
+            clearInterval(this.heartbeatInterval);
+            this.heartbeatInterval = null;
+        }
+    }
+
+    private sendHeartbeat(): void {
+        try {
+            if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+                const payload = {
+                    type: "heartbeat",
+                    deviceId: this.deviceId,
+                    sessionId: this.sessionService.SessionId,
+                    timestamp: new Date().toISOString()
+                };
+                this.ws.send(JSON.stringify(payload));
+                this.originalLog("[Buggy SDK] Heartbeat Sent");
+            }
+        } catch (e) {
+            this.originalError("[Buggy SDK] Failed to send heartbeat:", e);
+        }
+    }
+
+    private connectWebSocket(): void {
+        if (typeof window === "undefined" || typeof WebSocket === "undefined") return;
+
+        try {
+            const endpoint = this.apiClient.getEndpoint();
+            const urlObj = new URL(endpoint);
+            const wsProto = urlObj.protocol === "https:" ? "wss:" : "ws:";
+            const wsUrl = `${wsProto}//${urlObj.host}/sdk/devices/${this.deviceId}/stream`;
+
+            if (this.ws) {
+                this.ws.close();
+            }
+
+            this.ws = new WebSocket(wsUrl);
+
+            this.ws.onopen = () => {
+                this.originalLog("[Buggy SDK] WebSocket Connected");
+                if (this.reconnectTimeout) {
+                    clearTimeout(this.reconnectTimeout);
+                    this.reconnectTimeout = null;
+                }
+                this.startHeartbeat();
+            };
+
+            this.ws.onclose = () => {
+                this.ws = null;
+                this.stopHeartbeat();
+                this.originalLog("[Buggy SDK] WebSocket Disconnected");
+                if (!this.reconnectTimeout) {
+                    this.originalLog("[Buggy SDK] Reconnecting WebSocket");
+                    this.reconnectTimeout = setTimeout(() => {
+                        this.reconnectTimeout = null;
+                        this.connectWebSocket();
+                    }, 5000);
+                }
+            };
+
+            this.ws.onerror = (err) => {
+                this.originalError("[Buggy SDK] Status WebSocket error:", err);
+            };
+        } catch (e) {
+            this.originalError("[Buggy SDK] Failed to connect Status WebSocket:", e);
+        }
     }
 
     private getOrCreateDeviceId(): string {
@@ -133,7 +224,7 @@ export class ConsoleInterceptor {
             latitude,
             longitude,
             url: typeof window !== "undefined" ? window.location?.href || "unknown" : "unknown",
-            isOnline: this.sessionService.IsOnline,
+
         };
 
         // Use originalLog to output the structured logEvent and avoid infinite recursion
