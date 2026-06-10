@@ -1,6 +1,6 @@
 {
   "name": "@raghabneupane/buggy",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Logging SDK",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
